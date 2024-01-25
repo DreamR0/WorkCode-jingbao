@@ -176,7 +176,7 @@ public class GetBatchShiftScheduleFromCmd extends AbstractCommonCommand<Map<Stri
 			//=z 增加是否"按人员轮巡排班"
 			hrmFieldBean = new HrmFieldBean();
 			hrmFieldBean.setFieldname("isturning");
-			hrmFieldBean.setFieldlabel("-81466");
+			hrmFieldBean.setFieldlabel("-2024001");
 			hrmFieldBean.setFieldhtmltype("4");
 			hrmFieldBean.setType("1");
 			hrmFieldBean.setFieldvalue("0");
