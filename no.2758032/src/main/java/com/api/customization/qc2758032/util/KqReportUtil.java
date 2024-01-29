@@ -52,6 +52,7 @@ public class KqReportUtil {
             JobTitlesComInfo jobTitlesComInfo = new JobTitlesComInfo();
             KQLeaveRulesBiz kqLeaveRulesBiz = new KQLeaveRulesBiz();
             KQReportBiz kqReportBiz = new KQReportBiz();
+            KqReportBizCustom kqReportBizCustom = new KqReportBizCustom();
             KqReportBizCustomUtil kqReportBizCustomUtil = new KqReportBizCustomUtil();
 
             JSONObject jsonObj = JSON.parseObject(Util.null2String(params.get("data")));
@@ -93,7 +94,7 @@ public class KqReportUtil {
             int isHaveNext = 0;
 
 
-            String rightSql = kqReportBiz.getReportRight("1",""+user.getUID(),"a");
+            String rightSql = kqReportBizCustom.getReportRight("1",""+user.getUID(),"a");
             if(isFromMyAttendance.equals("1")){
                 rightSql = "";
             }
@@ -128,7 +129,7 @@ public class KqReportUtil {
             String definedFieldSum = Util.null2String(definedFieldInfo.get("definedFieldSum"));
 
             String backFields = " a.id,a.lastname,a.workcode,a.dsporder,b.resourceid,a.subcompanyid1 as subcompanyid,a.departmentid,a.jobtitle," +
-                    " a.certificatenum as certificatenum,sum(b.FORGOTCHECK) as forgotCheckEnd,sum(b.FORGOTBEGINWORKCHECK) as forgotCheckBegin,"+
+                    " a.certificatenum as certificatenum,b.groupid,sum(b.FORGOTCHECK) as forgotCheckEnd,sum(b.FORGOTBEGINWORKCHECK) as forgotCheckBegin,"+
                     " sum(b.workdays) as workdays,sum(b.workMins) as workMins,sum(b.attendancedays) as attendancedays," +
                     " sum(b.attendanceMins) as attendanceMins,sum(b.beLate) as beLate,sum(b.beLateMins) as beLateMins, " +
                     " sum(b.graveBeLate) as graveBeLate, sum(b.graveBeLateMins) as graveBeLateMins,sum(b.leaveEearly) as leaveEearly," +
@@ -142,7 +143,7 @@ public class KqReportUtil {
             }
             String sqlFrom = " from hrmresource a, kq_format_total b where a.id= b.resourceid and b.kqdate >='"+fromDate+"' and b.kqdate <='"+toDate+"'";
             String sqlWhere = rightSql;
-            String groupBy = " group by a.id,a.lastname,a.workcode,a.dsporder,b.resourceid,a.subcompanyid1,a.departmentid,a.jobtitle,a.certificatenum ";
+            String groupBy = " group by b.groupid,a.id,a.lastname,a.workcode,a.dsporder,b.resourceid,a.subcompanyid1,a.departmentid,a.jobtitle,a.certificatenum ";
             if(subCompanyId.length()>0){
                 sqlWhere +=" and b.subcompanyid in("+subCompanyId+") ";
             }
@@ -228,10 +229,10 @@ public class KqReportUtil {
             } else {
                 sql = " select " + sql;
             }
-            Map<String,Object> flowData = kqReportBiz.getFlowData(params,user);
+            Map<String,Object> flowData = kqReportBizCustom.getFlowData(params,user);
             KqReportCustomUtil kqReportCustomUtil = new KqReportCustomUtil();
             RecordSet rsCustom = new RecordSet();
-            new BaseBean().writeLog("==zj==(sql)" + JSON.toJSONString(sql));
+            new BaseBean().writeLog("(kq_format_total Sql)" + JSON.toJSONString(sql));
             rs.execute(sql);
             while (rs.next()) {
                 data = new HashMap<>();
@@ -279,31 +280,35 @@ public class KqReportUtil {
                             serialIds = Util.splitString2List(attendanceSerial,",");
                         }
                         for(int i=0;serialIds!=null&&i<serialIds.size();i++){
-                            data.put(serialIds.get(i), kqReportBiz.getSerialCount(id,fromDate,toDate,serialIds.get(i)));
+                            data.put(serialIds.get(i), kqReportBizCustom.getSerialCount(id,fromDate,toDate,serialIds.get(i)));
                         }
                     }else if(kqReportFieldComInfo.getParentid().equals("overtime")||kqReportFieldComInfo.getParentid().equals("overtime_nonleave")
                             ||kqReportFieldComInfo.getParentid().equals("overtime_4leave")||fieldName.equals("businessLeave") || fieldName.equals("officialBusiness")){
                         if(fieldName.equals("overtimeTotal")){
-                            double workingDayOvertime_4leave = Util.getDoubleValue(Util.null2String(flowData.get(id+"|workingDayOvertime_4leave")));
+                            String groupid = Util.null2String(rs.getString("groupid"));
+                            new BaseBean().writeLog("flowData" + JSON.toJSONString(flowData));
+                            new BaseBean().writeLog("(key)" + id+"|workingDayOvertime_4leave"+"|"+groupid);
+                            double workingDayOvertime_4leave = Util.getDoubleValue(Util.null2String(flowData.get(id+"|workingDayOvertime_4leave"+"|"+groupid)));
                             workingDayOvertime_4leave = workingDayOvertime_4leave<0?0:workingDayOvertime_4leave;
-                            double restDayOvertime_4leave = Util.getDoubleValue(Util.null2String(flowData.get(id+"|restDayOvertime_4leave")));
+                            double restDayOvertime_4leave = Util.getDoubleValue(Util.null2String(flowData.get(id+"|restDayOvertime_4leave"+"|"+groupid)));
                             restDayOvertime_4leave = restDayOvertime_4leave<0?0:restDayOvertime_4leave;
-                            double holidayOvertime_4leave = Util.getDoubleValue(Util.null2String(flowData.get(id+"|holidayOvertime_4leave")));
+                            double holidayOvertime_4leave = Util.getDoubleValue(Util.null2String(flowData.get(id+"|holidayOvertime_4leave"+"|"+groupid)));
                             holidayOvertime_4leave = holidayOvertime_4leave<0?0:holidayOvertime_4leave;
 
-                            double workingDayOvertime_nonleave = Util.getDoubleValue(Util.null2String(flowData.get(id+"|workingDayOvertime_nonleave")));
+                            double workingDayOvertime_nonleave = Util.getDoubleValue(Util.null2String(flowData.get(id+"|workingDayOvertime_nonleave"+"|"+groupid)));
                             workingDayOvertime_nonleave = workingDayOvertime_nonleave<0?0:workingDayOvertime_nonleave;
-                            double restDayOvertime_nonleave = Util.getDoubleValue(Util.null2String(flowData.get(id+"|restDayOvertime_nonleave")));
+                            double restDayOvertime_nonleave = Util.getDoubleValue(Util.null2String(flowData.get(id+"|restDayOvertime_nonleave"+"|"+groupid)));
                             restDayOvertime_nonleave = restDayOvertime_nonleave<0?0:restDayOvertime_nonleave;
-                            double holidayOvertime_nonleave = Util.getDoubleValue(Util.null2String(flowData.get(id+"|holidayOvertime_nonleave")));
+                            double holidayOvertime_nonleave = Util.getDoubleValue(Util.null2String(flowData.get(id+"|holidayOvertime_nonleave"+"|"+groupid)));
                             holidayOvertime_nonleave = holidayOvertime_nonleave<0?0:holidayOvertime_nonleave;
 
                             fieldValue = KQDurationCalculatorUtil.getDurationRound(String.valueOf(workingDayOvertime_4leave+restDayOvertime_4leave+holidayOvertime_4leave+
                                     workingDayOvertime_nonleave+restDayOvertime_nonleave+holidayOvertime_nonleave));
                         }else if(fieldName.equals("businessLeave") || fieldName.equals("officialBusiness")){
-                            String businessLeaveData = Util.null2s(Util.null2String(flowData.get(id+"|"+fieldName)),"0.0");
+                            String groupid = Util.null2String(rs.getString("groupid"));
+                            String businessLeaveData = Util.null2s(Util.null2String(flowData.get(id+"|"+fieldName+"|"+groupid)),"0.0");
                             String backType = fieldName+"_back";
-                            String businessLeavebackData = Util.null2s(Util.null2String(flowData.get(id+"|"+backType)),"0.0");
+                            String businessLeavebackData = Util.null2s(Util.null2String(flowData.get(id+"|"+backType+"|"+groupid)),"0.0");
                             String businessLeave = "";
                             try{
                                 //以防止出现精度问题
@@ -323,7 +328,8 @@ public class KqReportUtil {
                             }
                             fieldValue = KQDurationCalculatorUtil.getDurationRound(businessLeave);
                         }else{
-                            fieldValue = KQDurationCalculatorUtil.getDurationRound(Util.null2String(flowData.get(id+"|"+fieldName)));
+                            String groupid = Util.null2String(rs.getString("groupid"));
+                            fieldValue = KQDurationCalculatorUtil.getDurationRound(Util.null2String(flowData.get(id+"|"+fieldName+"|"+groupid)));
                         }
                     } else {
                         fieldValue = Util.null2String(rs.getString(fieldName));
@@ -345,8 +351,9 @@ public class KqReportUtil {
                 Map<String, Object> leaveRule = null;
                 for(int i=0;allLeaveRules!=null&&i<allLeaveRules.size();i++){
                     leaveRule = (Map<String, Object>)allLeaveRules.get(i);
+                    String groupid = Util.null2String(rs.getString("groupid"));
                     String flowType = Util.null2String("leaveType_"+leaveRule.get("id"));
-                    String leaveData = Util.null2String(flowData.get(id+"|"+flowType));
+                    String leaveData = Util.null2String(flowData.get(id+"|"+flowType+"|"+groupid));
                     String flowLeaveBackType = Util.null2String("leavebackType_"+leaveRule.get("id"));
                     String leavebackData = Util.null2s(Util.null2String(flowData.get(id+"|"+flowLeaveBackType)),"0.0");
                     String b_flowLeaveData = "";
@@ -378,7 +385,7 @@ public class KqReportUtil {
                     data.put(flowType,flowLeaveData);
                 }
 
-                Map<String,Object> detialDatas = kqReportBiz.getDetialDatas(id,fromDate,toDate,user);
+                Map<String,Object> detialDatas = kqReportBizCustom.getDetialDatas(id,fromDate,toDate,user);
                 /*Map<String,Object> detialDatas = kqReportBizCustomUtil.getDetialDatas(id,fromDate,toDate,user);*/
 //        new KQLog().info("id:"+id+":detialDatas:"+detialDatas);
                 isEnd = false;
@@ -387,7 +394,7 @@ public class KqReportUtil {
                 data.put("certificatenum",Util.null2s(rs.getString("certificatenum"),""));
                 data.put("forgotCheckEnd",Util.null2s(rs.getString("forgotCheckEnd"),""));
                 data.put("forgotCheckBegin",Util.null2s(rs.getString("forgotCheckBegin"),""));
-                String kqGroupId="";
+              /*  String kqGroupId="";
                 String customSql = " select DISTINCT b.GROUPNAME  from kq_format_total a,KQ_GROUP b where resourceid='"+id+"' and kqdate between '"+fromDate+"' and '"+toDate+"' and a.GROUPID = b.id";
                 new BaseBean().writeLog("==zj==(考勤组获取)" + customSql);
                 rsCustom.executeQuery(customSql);
@@ -396,8 +403,8 @@ public class KqReportUtil {
                 }
                 if (kqGroupId.length() > 0){
                     kqGroupId = kqGroupId.substring(0,kqGroupId.length()-1);
-                }
-                data.put("kqGroupId",Util.null2s(kqGroupId,""));
+                }*/
+                data.put("kqGroupId",Util.null2s(rs.getString("groupid"),""));
                 String kqMonth = "";
                 if (fromDate.length() > 7){
                      kqMonth = Util.null2String(fromDate.substring(0,7));

@@ -523,12 +523,15 @@ public class KqReportBizCustom extends BaseBean {
                 sqlWhere += " and a.loginid is not null "+(rs.getDBType().equals("oracle")?"":" and a.loginid<>'' ");
             }
 
+            //变为分组查询
             for(String table : tables){
-                sql = " select resourceid, durationrule, sum(duration) as val from hrmresource a, "+table+" b "+
-                        " where a.id = b.resourceid and (b.status is null or b.status<>1) and belongdate >='"+fromDate+"' and belongdate <='"+toDate+"' "+sqlWhere+
-                        " group by resourceid, durationrule ";
+                sql = " select b.resourceid, b.durationrule, sum(b.duration) as val,c.groupid from hrmresource a, "+table+" b,"+" kq_format_total c "+
+                        " where a.id = b.resourceid and (b.status is null or b.status<>1) and b.belongdate >='"+fromDate+"' and b.belongdate <='"+toDate+"' "+sqlWhere+" and (b.belongdate = c.kqdate and b.resourceid = c.resourceid)"+
+                        " group by c.groupid,b.resourceid, b.durationrule ";
+                new BaseBean().writeLog("evectionOutSql:"+sql);
                 rs.execute(sql);
                 while (rs.next()) {
+                    String groupid = rs.getString("groupid");
                     String resourceid = rs.getString("resourceid");
                     double value = rs.getDouble("val");
                     String durationrule = rs.getString("durationrule");
@@ -555,7 +558,7 @@ public class KqReportBizCustom extends BaseBean {
                         }
                     }
 
-                    String key = resourceid+"|"+flowType;
+                    String key = resourceid+"|"+flowType+"|"+groupid;
                     if(datas.containsKey(key)){
                         value += Util.getDoubleValue(Util.null2String(datas.get(key)));
                     }
@@ -734,14 +737,17 @@ public class KqReportBizCustom extends BaseBean {
                 sqlWhere += " and a.loginid is not null "+(rs.getDBType().equals("oracle")?"":" and a.loginid<>'' ");
             }
 
-            sql = " select resourceid, newleavetype, durationrule, sum(duration) as val from hrmresource a, "+KqSplitFlowTypeEnum.LEAVE.getTablename()+" b "+
-                    " where a.id = b.resourceid and belongdate >='"+fromDate+"' and belongdate <='"+toDate+"' " +sqlWhere	+
-                    " group by resourceid, newleavetype, durationrule ";
+            //根据考勤组进行拆分
+            sql = " select b.resourceid, b.newleavetype, b.durationrule, sum(duration) as val,c.groupid from hrmresource a, "+KqSplitFlowTypeEnum.LEAVE.getTablename()+" b,"+"kq_format_total c "+
+                    " where a.id = b.resourceid and belongdate >='"+fromDate+"' and belongdate <='"+toDate+"' and (c.kqdate = b.belongdate and b.resourceid = c.resourceid) " +sqlWhere	+
+                    " group by c.groupid,b.resourceid, b.newleavetype, b.durationrule ";
+            new BaseBean().writeLog("leaveDataSql:" + sql);
             rs.execute(sql);
             while (rs.next()) {
                 String resourceid = rs.getString("resourceid");
                 String newleavetype = rs.getString("newleavetype");
                 String durationrule = rs.getString("durationrule");
+                String groupid = rs.getString("groupid");
                 double value = rs.getDouble("val")<0?0:rs.getDouble("val");
 
                 double proportion = Util.getDoubleValue(kqLeaveRulesComInfo.getProportion(newleavetype));
@@ -755,7 +761,8 @@ public class KqReportBizCustom extends BaseBean {
                     }
                 }
 
-                String key = resourceid+"|leaveType_"+newleavetype;
+                //key增加一个groupid标识
+                String key = resourceid+"|leaveType_"+newleavetype+"|"+groupid;
                 if(datas.containsKey(key)){
                     value += Util.getDoubleValue(Util.null2String(datas.get(key)));
                 }
@@ -913,6 +920,7 @@ public class KqReportBizCustom extends BaseBean {
             sql = " select resourceid, newleavetype, durationrule, sum(duration) as val from hrmresource a, "+KqSplitFlowTypeEnum.LEAVEBACK.getTablename()+" b "+
                     " where a.id = b.resourceid and belongdate >='"+fromDate+"' and belongdate <='"+toDate+"' " +sqlWhere	+
                     " group by resourceid, newleavetype, durationrule ";
+            new BaseBean().writeLog("flowLeaveBackSql:"+sql);
             rs.execute(sql);
             while (rs.next()) {
                 String resourceid = rs.getString("resourceid");
@@ -1003,11 +1011,13 @@ public class KqReportBizCustom extends BaseBean {
                 sqlWhere += " and a.loginid is not null "+(rs.getDBType().equals("oracle")?"":" and a.loginid<>'' ");
             }
 
-            sql = " select resourceid, durationrule, changetype,sum(duration) as val from hrmresource a, "+KqSplitFlowTypeEnum.PROCESSCHANGE.getTablename()+" b "+
-                    " where a.id = b.resourceid and belongdate >='"+fromDate+"' and belongdate <='"+toDate+"' "+sqlWhere+
-                    " group by resourceid, durationrule,changetype ";
+            sql = " select b.resourceid, b.durationrule, b.changetype,sum(b.duration) as val,c.groupid from hrmresource a, "+KqSplitFlowTypeEnum.PROCESSCHANGE.getTablename()+" b,kq_format_total c "+
+                    " where a.id = b.resourceid and b.belongdate >='"+fromDate+"' and b.belongdate <='"+toDate+"' "+sqlWhere+" and (c.kqdate = b.belongdate and b.resourceid = c.resourceid) "+
+                    " group by c.groupid,b.resourceid, b.durationrule,b.changetype ";
+            new BaseBean().writeLog("processSionSql:"+sql);
             rs.execute(sql);
             while (rs.next()) {
+                String groupid = rs.getString("groupid");
                 String resourceid = rs.getString("resourceid");
                 int changetype = Util.getIntValue(rs.getString("changetype"));
 
@@ -1034,7 +1044,7 @@ public class KqReportBizCustom extends BaseBean {
                     }
                 }
 
-                String key = resourceid+"|"+flowType;
+                String key = resourceid+"|"+flowType+"|"+groupid;
                 if(datas.containsKey(key)){
                     value += Util.getDoubleValue(Util.null2String(datas.get(key)));
                 }
@@ -1452,11 +1462,12 @@ public class KqReportBizCustom extends BaseBean {
 
             String valueField = "";
 
-            sql = " select resourceid,changeType, sum(cast(duration_min as decimal(18,4))) as val,paidLeaveEnable "+
-                    " from hrmresource a, kq_flow_overtime b "+
-                    " where a.id = b.resourceid and belongdate >='"+fromDate+"' and belongdate <='"+toDate+"' " +sqlWhere+
-                    " group by resourceid,changeType,paidLeaveEnable  ";
+            sql = " select b.resourceid,b.changeType, sum(cast(b.duration_min as decimal(18,4))) as val,b.paidLeaveEnable,c.groupid"+
+                    " from hrmresource a, kq_flow_overtime b,kq_format_total c"+
+                    " where a.id = b.resourceid and belongdate >='"+fromDate+"' and b.belongdate <='"+toDate+"' " +sqlWhere+" and (c.kqdate = b.belongdate and b.resourceid = c.resourceid) "+
+                    " group by c.groupid, b.resourceid,b.changeType,b.paidLeaveEnable  ";
             rs.execute(sql);
+            new BaseBean().writeLog("overTimeSql:"+sql);
             kqLog.info("getFlowOverTimeDataNew:sql:"+sql);
             while (rs.next()) {
                 String resourceid = rs.getString("resourceid");
@@ -1483,7 +1494,8 @@ public class KqReportBizCustom extends BaseBean {
                     //0表示不关联调休
                     flowType += "_nonleave";
                 }
-                String key = resourceid+"|"+flowType;
+                String groupid = rs.getString("groupid");
+                String key = resourceid+"|"+flowType+"|"+groupid;
                 //df.format 默认是不四舍五入的 0.125这样的就会直接变成0.12了
                 df.setMaximumFractionDigits(5);
                 if(datas.containsKey(key)){
@@ -1763,6 +1775,7 @@ public class KqReportBizCustom extends BaseBean {
             sql = " select resourceid, durationrule, sum(duration) as val from hrmresource a, "+KqSplitFlowTypeEnum.OTHER.getTablename()+" b "+
                     " where a.id = b.resourceid and belongdate >='"+fromDate+"' and belongdate <='"+toDate+"' "+sqlWhere+
                     " group by resourceid, durationrule ";
+            new BaseBean().writeLog("otherFlowSql:" + sql);
             rs.execute(sql);
             while (rs.next()) {
                 String resourceid = rs.getString("resourceid");

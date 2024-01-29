@@ -594,7 +594,7 @@ public class GetDocDetailCmd extends AbstractCommonCommand<Map<String, Object>> 
                             if(canEditDoc && SystemDocUtil.canEditForMobile(extName,user)){
                                 boolean isOpenWps = false;	//设置开关状态
                                 try{
-                                    //查看开关状态
+                                    /*//查看开关状态
                                     RecordSet wps = new RecordSet();
                                     wps.executeQuery("select isopen from wps_config where type='wps'");
                                     if (wps.next()){
@@ -605,7 +605,7 @@ public class GetDocDetailCmd extends AbstractCommonCommand<Map<String, Object>> 
                                             subcompanyName =user.getUserSubCompany1();//获取该用户的分部id
 
                                             RecordSet sub = new RecordSet();
-                                            /*String Docsql = "select subcompanyname from uf_wps where subcompanyname in ("+subcompanyName+")";*/
+                                            *//*String Docsql = "select subcompanyname from uf_wps where subcompanyname in ("+subcompanyName+")";*//*
                                             String Docsql = "select * from uf_wps where instr(',' || subcompanyname || ',', ',' || " + subcompanyName+ " || ',')>0";
                                             new BaseBean().writeLog("(canEditAcc是否显示编辑按钮)" + Docsql);
                                             sub.executeQuery(Docsql);
@@ -613,11 +613,13 @@ public class GetDocDetailCmd extends AbstractCommonCommand<Map<String, Object>> 
                                                 isOpenWps = true;
                                             }
                                         }
-                                    }
+                                    }*/
                                 }catch (Exception e){
                                     new BaseBean().writeLog("canEditAcc报错" + e);
                                 }
+/*
                                 new BaseBean().writeLog("canEditAcc（权限）"+user.getUID()+" | " + filename + " | " + isOpenWps);
+*/
                                 docAttr.put("canEditAcc",isOpenWps);
                             }
 
